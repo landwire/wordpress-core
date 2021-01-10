@@ -521,12 +521,47 @@ $GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
 $GLOBALS['wp_locale_switcher']->init();
 
 // Load the functions for the active theme, for both parent and child theme if applicable.
-foreach ( wp_get_active_and_valid_themes() as $theme ) {
-	if ( file_exists( $theme . '/functions.php' ) ) {
-		include $theme . '/functions.php';
-	}
+// add additional hooks for child and parent themes
+$themes = wp_get_active_and_valid_themes();
+
+// only switch order when we have a child theme and the constant is defined
+if (defined('SWITCH_THEME_LOAD_ORDER') && isset($themes[1])) {
+    if (SWITCH_THEME_LOAD_ORDER) {
+        $themes = array_reverse($themes);
+    }
 }
-unset( $theme );
+
+foreach ($themes as $index => $theme) {
+    if (file_exists($theme . '/functions.php')) {
+        include $theme . '/functions.php';
+    }
+
+    // only add theses hooks when we have a child theme
+    if (isset($themes[1])) {
+        if (defined('SWITCH_THEME_LOAD_ORDER')) {
+            if (SWITCH_THEME_LOAD_ORDER) {
+                if ($index === 0) {
+                    do_action('after_setup_parent_theme');
+                }
+                else {
+                    do_action('after_setup_child_theme');
+                }
+            }
+        }
+        else {
+            if ($index === 0) {
+                do_action('after_setup_child_theme');
+            }
+            else {
+                do_action('after_setup_parent_theme');
+            }
+        }
+    }
+}
+
+unset($theme);
+unset($themes);
+unset($index);
 
 /**
  * Fires after the theme is loaded.
